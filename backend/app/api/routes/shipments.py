@@ -1,13 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.shipment import Shipment
+from app.services.shipment_service import ShipmentService
 
 router = APIRouter(
     prefix="/shipments",
     tags=["Shipments"]
 )
+
 
 
 def get_db():
@@ -20,32 +21,29 @@ def get_db():
 
 
 @router.post("")
-def create_shipment(order_id: int, cargo_company: str, tracking_number: str = None):
-    db: Session = SessionLocal()
+def create_shipment(
+    order_id: int,
+    cargo_company: str,
+    tracking_number: str = None,
+    db: Session = Depends(get_db)
+):
 
-    shipment = Shipment(
-        order_id=order_id,
-        cargo_company=cargo_company,
-        tracking_number=tracking_number,
-        status="preparing"
+    shipment = ShipmentService.create_shipment(
+        db, order_id, cargo_company, tracking_number
     )
-
-    db.add(shipment)
-    db.commit()
-    db.refresh(shipment)
 
     return {
         "success": True,
+        "message": "Shipment created",
         "data": shipment
     }
 
 
 
 @router.get("")
-def get_shipments():
-    db: Session = SessionLocal()
+def get_shipments(db: Session = Depends(get_db)):
 
-    shipments = db.query(Shipment).all()
+    shipments = ShipmentService.get_shipments(db)
 
     return {
         "success": True,
@@ -55,13 +53,15 @@ def get_shipments():
 
 
 @router.get("/{id}")
-def get_shipment(id: int):
-    db: Session = SessionLocal()
+def get_shipment(id: int, db: Session = Depends(get_db)):
 
-    shipment = db.query(Shipment).filter(Shipment.id == id).first()
+    shipment = ShipmentService.get_by_id(db, id)
 
     if not shipment:
-        return {"success": False, "message": "Shipment not found"}
+        return {
+            "success": False,
+            "message": "Shipment not found"
+        }
 
     return {
         "success": True,
@@ -71,15 +71,15 @@ def get_shipment(id: int):
 
 
 @router.get("/order/{order_id}")
-def get_by_order(order_id: int):
-    db: Session = SessionLocal()
+def get_by_order(order_id: int, db: Session = Depends(get_db)):
 
-    shipment = db.query(Shipment).filter(
-        Shipment.order_id == order_id
-    ).first()
+    shipment = ShipmentService.get_by_order(db, order_id)
 
     if not shipment:
-        return {"success": False, "message": "Shipment not found"}
+        return {
+            "success": False,
+            "message": "Shipment not found"
+        }
 
     return {
         "success": True,
@@ -87,18 +87,16 @@ def get_by_order(order_id: int):
     }
 
 
-
 @router.put("/{id}/status")
-def update_status(id: int, status: str):
-    db: Session = SessionLocal()
+def update_status(id: int, status: str, db: Session = Depends(get_db)):
 
-    shipment = db.query(Shipment).filter(Shipment.id == id).first()
+    shipment = ShipmentService.update_status(db, id, status)
 
     if not shipment:
-        return {"success": False, "message": "Shipment not found"}
-
-    shipment.status = status
-    db.commit()
+        return {
+            "success": False,
+            "message": "Shipment not found"
+        }
 
     return {
         "success": True,
@@ -106,18 +104,16 @@ def update_status(id: int, status: str):
     }
 
 
-
 @router.put("/{id}/tracking")
-def update_tracking(id: int, tracking_number: str):
-    db: Session = SessionLocal()
+def update_tracking(id: int, tracking_number: str, db: Session = Depends(get_db)):
 
-    shipment = db.query(Shipment).filter(Shipment.id == id).first()
+    shipment = ShipmentService.update_tracking(db, id, tracking_number)
 
     if not shipment:
-        return {"success": False, "message": "Shipment not found"}
-
-    shipment.tracking_number = tracking_number
-    db.commit()
+        return {
+            "success": False,
+            "message": "Shipment not found"
+        }
 
     return {
         "success": True,
@@ -125,18 +121,16 @@ def update_tracking(id: int, tracking_number: str):
     }
 
 
-
 @router.delete("/{id}")
-def delete_shipment(id: int):
-    db: Session = SessionLocal()
+def delete_shipment(id: int, db: Session = Depends(get_db)):
 
-    shipment = db.query(Shipment).filter(Shipment.id == id).first()
+    shipment = ShipmentService.delete_shipment(db, id)
 
     if not shipment:
-        return {"success": False, "message": "Shipment not found"}
-
-    db.delete(shipment)
-    db.commit()
+        return {
+            "success": False,
+            "message": "Shipment not found"
+        }
 
     return {
         "success": True,

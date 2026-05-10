@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, ForeignKey,Boolean,DateTime
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 class Order(Base):
@@ -10,3 +12,8 @@ class Order(Base):
     quantity = Column(Integer)
     status = Column(String, default="pending")
     shipments = relationship("Shipment", back_populates="order")
+    is_deleted = Column(Boolean, default=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

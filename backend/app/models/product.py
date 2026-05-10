@@ -1,11 +1,19 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean,DateTime
 from app.core.database import Base
+from datetime import datetime
 
 class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    stock= Column(Integer,nullable=False)
-    price = Column(Float, nullable=False)
-    seller_id = Column(Integer, ForeignKey("sellers.id"), nullable=False)
+    seller_id = Column(Integer)
+
+    name = Column(String)
+    price = Column(Float)
+    stock = Column(Integer)
+    is_deleted = Column(Boolean, default=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+  

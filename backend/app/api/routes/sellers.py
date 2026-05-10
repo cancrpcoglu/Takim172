@@ -1,13 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.models.seller import Seller
+from app.services.seller_service import SellerService
 
 router = APIRouter(
     prefix="/sellers",
     tags=["Sellers"]
 )
+
+
 
 def get_db():
     db = SessionLocal()
@@ -17,40 +19,32 @@ def get_db():
         db.close()
 
 
-# POST /sellers/register
+
 @router.post("/register")
 def register_seller(
     user_id: int,
     store_name: str,
-    description:str,
-    rating:int,
-    
+    description: str,
+    rating: int,
+    db: Session = Depends(get_db)
 ):
-    db: Session = SessionLocal()
 
-    new_seller = Seller(
-        user_id=user_id,
-        store_name=store_name,
-        description=description,
-        rating=rating
+    seller = SellerService.register_seller(
+        db, user_id, store_name, description, rating
     )
-
-    db.add(new_seller)
-    db.commit()
-    db.refresh(new_seller)
 
     return {
         "success": True,
-        "data": new_seller
+        "message": "Seller created",
+        "data": seller
     }
 
 
-# GET /sellers
-@router.get("/")
-def get_sellers():
-    db: Session = SessionLocal()
 
-    sellers = db.query(Seller).all()
+@router.get("/")
+def get_sellers(db: Session = Depends(get_db)):
+
+    sellers = SellerService.get_sellers(db)
 
     return {
         "success": True,
@@ -58,14 +52,10 @@ def get_sellers():
     }
 
 
-# GET /sellers/me
 @router.get("/me")
-def get_my_seller(user_id: int):
-    db: Session = SessionLocal()
+def get_my_seller(user_id: int, db: Session = Depends(get_db)):
 
-    seller = db.query(Seller).filter(
-        Seller.user_id == user_id
-    ).first()
+    seller = SellerService.get_by_user(db, user_id)
 
     if not seller:
         return {
@@ -79,14 +69,11 @@ def get_my_seller(user_id: int):
     }
 
 
-# GET /sellers/{id}
+
 @router.get("/{id}")
-def get_seller(id: int):
-    db: Session = SessionLocal()
+def get_seller(id: int, db: Session = Depends(get_db)):
 
-    seller = db.query(Seller).filter(
-        Seller.id == id
-    ).first()
+    seller = SellerService.get_by_id(db, id)
 
     if not seller:
         return {
@@ -100,31 +87,25 @@ def get_seller(id: int):
     }
 
 
-# PUT /sellers/{id}
+
 @router.put("/{id}")
 def update_seller(
     id: int,
     store_name: str,
-    description:str,
-    rating:int,
+    description: str,
+    rating: int,
+    db: Session = Depends(get_db)
 ):
-    db: Session = SessionLocal()
 
-    seller = db.query(Seller).filter(
-        Seller.id == id
-    ).first()
+    seller = SellerService.update_seller(
+        db, id, store_name, description, rating
+    )
 
     if not seller:
         return {
             "success": False,
             "message": "Seller not found"
         }
-
-    seller.store_name = store_name
-    description=description,
-    rating=rating
-
-    db.commit()
 
     return {
         "success": True,
@@ -132,23 +113,17 @@ def update_seller(
     }
 
 
-# DELETE /sellers/{id}
-@router.delete("/{id}")
-def delete_seller(id: int):
-    db: Session = SessionLocal()
 
-    seller = db.query(Seller).filter(
-        Seller.id == id
-    ).first()
+@router.delete("/{id}")
+def delete_seller(id: int, db: Session = Depends(get_db)):
+
+    seller = SellerService.delete_seller(db, id)
 
     if not seller:
         return {
             "success": False,
             "message": "Seller not found"
         }
-
-    db.delete(seller)
-    db.commit()
 
     return {
         "success": True,

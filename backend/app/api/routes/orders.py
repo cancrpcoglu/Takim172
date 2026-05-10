@@ -1,12 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
-from app.models.order import Order
+from app.services.order_service import OrderService
 
 router = APIRouter(
     prefix="/orders",
     tags=["Orders"]
 )
+
 
 def get_db():
     db = SessionLocal()
@@ -16,41 +18,22 @@ def get_db():
         db.close()
 
 
-# POST /orders
 @router.post("/")
-def create_order(
-    user_id: int,
-    product_id: int,
-    quantity: int,
-):
-    db: Session = SessionLocal()
+def create_order(user_id: int, product_id: int, quantity: int, db: Session = Depends(get_db)):
 
-    new_order = Order(
-        user_id=user_id,
-        product_id=product_id,
-        quantity=quantity,
-        status="pending"
-    )
-
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
+    order = OrderService.create_order(db, user_id, product_id, quantity)
 
     return {
         "success": True,
-        "data": {
-            "id": new_order.id,
-            "status": new_order.status
-        }
+        "message": "Order created",
+        "data": order
     }
 
 
-# GET /orders
 @router.get("/")
-def get_orders():
-    db: Session = SessionLocal()
+def get_orders(db: Session = Depends(get_db)):
 
-    orders = db.query(Order).all()
+    orders = OrderService.get_orders(db)
 
     return {
         "success": True,
@@ -58,12 +41,10 @@ def get_orders():
     }
 
 
-# GET /orders/my
 @router.get("/my")
-def get_my_orders(user_id: int):
-    db: Session = SessionLocal()
+def get_my_orders(user_id: int, db: Session = Depends(get_db)):
 
-    orders = db.query(Order).filter(Order.user_id == user_id).all()
+    orders = OrderService.get_my_orders(db, user_id)
 
     return {
         "success": True,
@@ -71,12 +52,10 @@ def get_my_orders(user_id: int):
     }
 
 
-# GET /orders/{id}
 @router.get("/{id}")
-def get_order(id: int):
-    db: Session = SessionLocal()
+def get_order(id: int, db: Session = Depends(get_db)):
 
-    order = db.query(Order).filter(Order.id == id).first()
+    order = OrderService.get_by_id(db, id)
 
     if not order:
         return {
@@ -90,22 +69,17 @@ def get_order(id: int):
     }
 
 
-# PUT /orders/{id}/cancel
-@router.put("/{id}/cancel")
-def cancel_order(id: int):
-    db: Session = SessionLocal()
 
-    order = db.query(Order).filter(Order.id == id).first()
+@router.put("/{id}/cancel")
+def cancel_order(id: int, db: Session = Depends(get_db)):
+
+    order = OrderService.cancel_order(db, id)
 
     if not order:
         return {
             "success": False,
             "message": "Order not found"
         }
-
-    order.status = "cancelled"
-
-    db.commit()
 
     return {
         "success": True,
@@ -113,12 +87,11 @@ def cancel_order(id: int):
     }
 
 
-# PUT /orders/{id}/status
-@router.put("/{id}/status")
-def update_order_status(id: int, status: str):
-    db: Session = SessionLocal()
 
-    order = db.query(Order).filter(Order.id == id).first()
+@router.put("/{id}/status")
+def update_status(id: int, status: str, db: Session = Depends(get_db)):
+
+    order = OrderService.update_status(db, id, status)
 
     if not order:
         return {
@@ -126,11 +99,25 @@ def update_order_status(id: int, status: str):
             "message": "Order not found"
         }
 
-    order.status = status
-
-    db.commit()
-
     return {
         "success": True,
         "message": "Order status updated"
+    }
+
+
+
+@router.delete("/{id}")
+def delete_order(id: int, db: Session = Depends(get_db)):
+
+    order = OrderService.delete_order(db, id)
+
+    if not order:
+        return {
+            "success": False,
+            "message": "Order not found"
+        }
+
+    return {
+        "success": True,
+        "message": "Order deleted"
     }

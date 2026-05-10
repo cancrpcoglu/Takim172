@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+
+from datetime import datetime
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -15,3 +17,8 @@ class Shipment(Base):
     tracking_number = Column(String(150))
     status = Column(String(50), default="preparing")
     order = relationship("Order", back_populates="shipments")
+    is_deleted = Column(Boolean, default=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
