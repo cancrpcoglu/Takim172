@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Body, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import SessionLocal
+from backend.app.models.order import Order
+from backend.app.models.product import Product
+from backend.app.models.seller import Seller
 from backend.app.services.order_service import OrderService
 from backend.app.core.security import get_current_user, require_role
 
@@ -60,14 +63,22 @@ def get_my_orders(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    current_user_id = user.get("user_id")
-    orders = OrderService.get_my_orders(db, current_user_id)
-    return {
-        "success": True,
-        "data": orders
-    }
-
-
+    current_user_id = user.id if hasattr(user, 'id') else user.get("id")
+    
+    # Eğer kullanıcı satıcıysa, ona gelen siparişleri getir
+    if user.role == "seller":
+        # 1. Önce bu kullanıcıya ait satıcı (seller) kaydını bul
+        seller = db.query(Seller).filter(Seller.user_id == current_user_id).first()
+        if not seller:
+            return {"success": True, "data": []}
+            
+        # 2. Satıcının ürünlerine ait olan siparişleri getir (Join işlemi)
+        orders = db.query(Order).join(Product).filter(Product.seller_id == seller.id).all()
+    else:
+        # Müşteriyse kendi verdiklerini getir
+        orders = db.query(Order).filter(Order.user_id == current_user_id).all()
+    
+    return {"success": True, "data": orders}
 @router.get("/{id}")
 def get_order(
     id: int,

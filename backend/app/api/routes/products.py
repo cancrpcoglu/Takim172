@@ -4,9 +4,10 @@ from datetime import datetime, timezone # Modern zaman yönetimi
 
 from backend.app.core.database import SessionLocal
 from backend.app.models.product import Product
+from backend.app.models.user import User
 from backend.app.schemas.product_schema import ProductCreate, ProductUpdate
 from backend.app.services.product_service import ProductService
-from backend.app.core.security import require_role
+from backend.app.core.security import get_current_user, require_role
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -99,7 +100,18 @@ def update_product(
         "message": "Product updated",
         "data": product
     }
-
+@router.get("/my-products")
+def get_my_products(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user) # Token'dan kullanıcıyı alıyoruz
+):
+    # Sadece giriş yapan satıcının ID'sine sahip ürünleri filtrele
+    products = db.query(Product).filter(Product.seller_id == current_user.id).all()
+    
+    if not products:
+        return []
+        
+    return products
 @router.delete("/{product_id}")
 def delete_product(
     product_id: int,

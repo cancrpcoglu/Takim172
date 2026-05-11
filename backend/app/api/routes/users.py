@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
+from jose import JWTError,jwt
 from sqlalchemy.orm import Session
 
 from backend.app.core.database import SessionLocal
@@ -6,7 +7,7 @@ from backend.app.models.user import User
 from backend.app.schemas.user_schema import UserCreate, UserLogin
 from backend.app.services.user_service import UserService
 
-from backend.app.core.security import hash_password, verify_password, create_token
+from backend.app.core.security import ALGORITHM, SECRET_KEY, hash_password, verify_password, create_token
 from backend.app.core.security import get_current_user, require_role
 
 router = APIRouter(
@@ -55,22 +56,50 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 
     token = create_token(user)
     
-    # Debug için (opsiyonel) - return'den ÖNCE olmalı
-    print(f"Login successful: {data.email}")
+    print(f"Login successful: {data.email} - Role: {user.role}")
     
+    # BURAYI GÜNCELLEDİK: Kullanıcı bilgilerini de ekledik
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role  # İşte kritik nokta burası!
+        }
     }
 
 @router.get("/me")
-def me(user=Depends(get_current_user)):
-    
-    return {
-        "success": True,
-        "data": user
-    }
+def me(
+    authorization: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Token yok")
 
+    try:
+        token = authorization.replace("Bearer ", "")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Token bozuk")
+
+        user = db.query(User).filter(User.id == int(user_id)).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User bulunamadı")
+
+        return {
+            "success": True,
+            "data": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role
+            }
+        }
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token geçersiz")
 @router.get("/")
 def get_users(db: Session = Depends(get_db), user=Depends(require_role("admin"))):
     users = UserService.get_all(db)
