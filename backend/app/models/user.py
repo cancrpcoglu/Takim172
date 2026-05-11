@@ -7,9 +7,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
     email = Column(String, unique=True)
-    role = Column(String)
+    password = Column(String)
+    role = Column(String, default="user") 
     is_deleted = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)

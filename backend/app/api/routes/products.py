@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone # Modern zaman yönetimi
 
 from app.core.database import SessionLocal
 from app.models.product import Product
 from app.schemas.product_schema import ProductCreate, ProductUpdate
 from app.services.product_service import ProductService
+from app.core.security import require_role
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -17,17 +18,19 @@ def get_db():
     finally:
         db.close()
 
-
-
-@router.post("/")
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-
-    seller_id = 1  # TODO: JWT'den gelecek
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_product(
+    product: ProductCreate,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("seller"))   
+):
+    
+    seller_id = user.get("user_id")
 
     result = ProductService.create_product(
         db=db,
         seller_id=seller_id,
-        data=product.dict()
+        data=product.model_dump() # dict() yerine model_dump() (Pydantic v2)
     )
 
     return {
@@ -36,11 +39,8 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
         "data": result
     }
 
-
-
 @router.get("/")
 def get_products(db: Session = Depends(get_db)):
-
     products = db.query(Product).filter(
         Product.is_deleted == False
     ).all()
@@ -50,11 +50,8 @@ def get_products(db: Session = Depends(get_db)):
         "data": products
     }
 
-
-
 @router.get("/{product_id}")
 def get_product(product_id: int, db: Session = Depends(get_db)):
-
     product = db.query(Product).filter(
         Product.id == product_id,
         Product.is_deleted == False
@@ -68,11 +65,13 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
         "data": product
     }
 
-
-
 @router.put("/{product_id}")
-def update_product(product_id: int, updated: ProductUpdate, db: Session = Depends(get_db)):
-
+def update_product(
+    product_id: int,
+    updated: ProductUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("seller"))  
+):
     product = db.query(Product).filter(
         Product.id == product_id,
         Product.is_deleted == False
@@ -81,8 +80,14 @@ def update_product(product_id: int, updated: ProductUpdate, db: Session = Depend
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    for key, value in updated.dict(exclude_unset=True).items():
-        if key in ["id", "seller_id"]:
+  
+    if product.seller_id != user.get("user_id"):
+        raise HTTPException(status_code=403, detail="Not your product")
+
+    
+    update_data = updated.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        if key in ["id", "seller_id"]: # Değişmemesi gereken alanlar
             continue
         setattr(product, key, value)
 
@@ -95,11 +100,12 @@ def update_product(product_id: int, updated: ProductUpdate, db: Session = Depend
         "data": product
     }
 
-
-
 @router.delete("/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
-
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("seller"))
+):
     product = db.query(Product).filter(
         Product.id == product_id,
         Product.is_deleted == False
@@ -108,8 +114,11 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
+   
+
+    
     product.is_deleted = True
-    product.updated_at = datetime.utcnow()
+    product.updated_at = datetime.now(timezone.utc)
 
     db.commit()
 
