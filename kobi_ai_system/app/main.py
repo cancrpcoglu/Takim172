@@ -1,8 +1,8 @@
 from fastapi import FastAPI
-from app.schemas.requests import ChatRequest
-from app.schemas.responses import ChatResponse
-from app.agents.orchestrator import process_chat
-from app.agents.analytics_agent import process_admin_chat
+from kobi_ai_system.app.schemas.requests import ChatRequest
+from kobi_ai_system.app.schemas.responses import ChatResponse
+from kobi_ai_system.app.agents.orchestrator import process_chat
+from kobi_ai_system.app.agents.analytics_agent import process_admin_chat
 
 app = FastAPI(
     title="KOBİ AI System API",

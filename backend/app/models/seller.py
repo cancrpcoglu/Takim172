@@ -4,11 +4,12 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.core.database import Base
+from backend.app.core.database import Base
 
 
 class Seller(Base):
     __tablename__ = "sellers"
+    __table_args__ = {'extend_existing': True}  
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)

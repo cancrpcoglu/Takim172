@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, status
 from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
-from app.services.order_service import OrderService
-from app.core.security import get_current_user, require_role
+from backend.app.core.database import SessionLocal
+from backend.app.services.order_service import OrderService
+from backend.app.core.security import get_current_user, require_role
 
 router = APIRouter(
     prefix="/orders",

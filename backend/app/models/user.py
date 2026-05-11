@@ -1,10 +1,11 @@
 
 from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from app.core.database import Base
+from backend.app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}  
 
     id = Column(Integer, primary_key=True)
     email = Column(String, unique=True)

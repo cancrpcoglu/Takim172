@@ -1,9 +1,10 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean,DateTime
-from app.core.database import Base
+from backend.app.core.database import Base
 from datetime import datetime
 
 class Product(Base):
     __tablename__ = "products"
+    __table_args__ = {'extend_existing': True}  
 
     id = Column(Integer, primary_key=True, index=True)
     seller_id = Column(Integer)

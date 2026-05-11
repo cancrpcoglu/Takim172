@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone # Modern zaman yönetimi
 
-from app.core.database import SessionLocal
-from app.models.product import Product
-from app.schemas.product_schema import ProductCreate, ProductUpdate
-from app.services.product_service import ProductService
-from app.core.security import require_role
+from backend.app.core.database import SessionLocal
+from backend.app.models.product import Product
+from backend.app.schemas.product_schema import ProductCreate, ProductUpdate
+from backend.app.services.product_service import ProductService
+from backend.app.core.security import require_role
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -30,7 +30,7 @@ def create_product(
     result = ProductService.create_product(
         db=db,
         seller_id=seller_id,
-        data=product.model_dump() # dict() yerine model_dump() (Pydantic v2)
+        data=product.model_dump() 
     )
 
     return {

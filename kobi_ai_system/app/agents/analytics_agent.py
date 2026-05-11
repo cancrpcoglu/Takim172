@@ -5,8 +5,8 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from app.tools.analytics_tools import get_daily_sales_summary, get_delayed_cargos
-from app.schemas.responses import ChatResponse
+from kobi_ai_system.app.tools.analytics_tools import get_daily_sales_summary, get_delayed_cargos
+from kobi_ai_system.app.schemas.responses import ChatResponse
 
 load_dotenv()
 

@@ -1,4 +1,4 @@
-from app.models.seller import Seller
+from backend.app.models.seller import Seller
 
 
 class SellerService:

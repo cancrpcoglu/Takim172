@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
-from app.models.user import User
-from app.schemas.user_schema import UserCreate
-from app.services.user_service import UserService
-# get_current_user ve require_role artık security.py'deki yeni HTTPBearer yapısını kullanıyor
-from app.core.security import hash_password, verify_password, create_token
-from app.core.security import get_current_user, require_role
+from backend.app.core.database import SessionLocal
+from backend.app.models.user import User
+from backend.app.schemas.user_schema import UserCreate, UserLogin
+from backend.app.services.user_service import UserService
+
+from backend.app.core.security import hash_password, verify_password, create_token
+from backend.app.core.security import get_current_user, require_role
 
 router = APIRouter(
     prefix="/users",
@@ -44,24 +44,24 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-def login(email: str, password: str, db: Session = Depends(get_db)):
-    user = UserService.get_by_email(db, email)
+def login(data: UserLogin, db: Session = Depends(get_db)):
+    user = UserService.get_by_email(db, data.email)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-   
-    if not verify_password(password, user.password): 
+    if not verify_password(data.password, user.password):
         raise HTTPException(status_code=401, detail="Wrong password")
 
     token = create_token(user)
-
-   
+    
+    # Debug için (opsiyonel) - return'den ÖNCE olmalı
+    print(f"Login successful: {data.email}")
+    
     return {
         "access_token": token,
         "token_type": "bearer"
     }
-
 
 @router.get("/me")
 def me(user=Depends(get_current_user)):

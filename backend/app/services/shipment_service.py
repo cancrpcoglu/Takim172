@@ -1,16 +1,28 @@
-from app.models.shipment import Shipment
+from backend.app.models.order import Order
+from backend.app.models.shipment import Shipment
 
 
 class ShipmentService:
 
     @staticmethod
     def create_shipment(db, order_id: int, cargo_company: str, tracking_number: str = None):
+        order = db.query(Order).filter(Order.id == order_id).first()
+
+        if not order:
+            raise Exception("Order not found")
 
         if not order_id:
             raise Exception("Order required")
 
         if not cargo_company:
             raise Exception("Cargo company required")
+        existing = db.query(Shipment).filter(Shipment.order_id == order_id).first()
+
+        if existing:
+            raise Exception("Shipment already exists for this order")
+        
+        if order.status == "cancelled":
+            raise Exception("Cancelled order cannot have shipment")
 
         shipment = Shipment(
             order_id=order_id,
