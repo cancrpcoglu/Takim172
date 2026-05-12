@@ -87,8 +87,9 @@ with tab1:
     
     seller_id = get_seller_id()
     
-    # Siparişleri getir
-    orders_response = api_request("GET", "/my")
+    # Siparişleri getir - DOĞRU ENDPOINT
+    orders_response = api_request("GET", "/orders/my")  # /my değil, /orders/my
+    
     all_orders = []
     if orders_response:
         if isinstance(orders_response, dict):
@@ -98,6 +99,8 @@ with tab1:
                 all_orders = orders_response.get("data", [])
         elif isinstance(orders_response, list):
             all_orders = orders_response
+    
+   
     
     # Ürünleri getir
     products_response = api_request("GET", "/products")
@@ -113,13 +116,14 @@ with tab1:
     
     # Satıcının ürünlerini filtrele
     my_products = []
+    my_orders = []
+    
     if seller_id:
         my_products = [p for p in all_products if p.get("seller_id") == seller_id]
         my_product_ids = [p.get("id") for p in my_products]
         my_orders = [o for o in all_orders if o.get("product_id") in my_product_ids]
-    else:
-        my_orders = []
-
+        
+       
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("📦 Toplam Ürün", len(my_products))
@@ -136,19 +140,22 @@ with tab1:
     
     if my_orders:
         st.subheader("📈 Son Siparişler")
-        orders_df = pd.DataFrame(my_orders)
-        if 'created_at' in orders_df.columns:
-            orders_df['created_at'] = pd.to_datetime(orders_df['created_at'])
-            orders_df = orders_df.sort_values('created_at', ascending=False)
-        
-        show_cols = [c for c in ['id', 'product_id', 'quantity', 'status', 'created_at'] if c in orders_df.columns]
-        st.dataframe(orders_df[show_cols].head(10), use_container_width=True)
-        
-        # Durum dağılımı
-        if 'status' in orders_df.columns:
-            st.subheader("📊 Durum Dağılımı")
-            status_counts = orders_df['status'].value_counts()
-            st.bar_chart(status_counts)
+        try:
+            orders_df = pd.DataFrame(my_orders)
+            if 'created_at' in orders_df.columns:
+                orders_df['created_at'] = pd.to_datetime(orders_df['created_at'])
+                orders_df = orders_df.sort_values('created_at', ascending=False)
+            
+            show_cols = [c for c in ['id', 'product_id', 'quantity', 'status', 'created_at'] if c in orders_df.columns]
+            st.dataframe(orders_df[show_cols].head(10), use_container_width=True)
+            
+            # Durum dağılımı
+            if 'status' in orders_df.columns:
+                st.subheader("📊 Durum Dağılımı")
+                status_counts = orders_df['status'].value_counts()
+                st.bar_chart(status_counts)
+        except Exception as e:
+            st.error(f"Veri gösterilirken hata: {e}")
     else:
         st.info("📭 Henüz siparişiniz bulunmuyor.")
 
@@ -258,89 +265,59 @@ with tab2:
     else:
         st.info("Ürünler yüklenemedi.")
 
-# ==================== TAB 3: SİPARİŞLER (YENİ EKLENDİ) ====================
+# ==================== TAB 3: SİPARİŞLER  ====================
+
 with tab3:
     st.subheader("📦 Gelen Siparişler")
     
-    seller_id = get_seller_id()
+    # API'den sadece bu satıcıya/kullanıcıya ait siparişleri çekiyoruz
+    response = api_request("GET", "/orders/my")
     
-    # Siparişleri getir
-    orders_response = api_request("GET", "/my")
-    all_orders = []
-    if orders_response:
-        if isinstance(orders_response, dict):
-            if orders_response.get("success"):
-                all_orders = orders_response.get("data", [])
-            elif orders_response.get("data"):
-                all_orders = orders_response.get("data", [])
-        elif isinstance(orders_response, list):
-            all_orders = orders_response
-    
-    # Ürünleri getir
-    products_response = api_request("GET", "/products")
-    all_products = []
-    if products_response:
-        if isinstance(products_response, dict):
-            if products_response.get("success"):
-                all_products = products_response.get("data", [])
-            elif products_response.get("data"):
-                all_products = products_response.get("data", [])
-        elif isinstance(products_response, list):
-            all_products = products_response
-    
-    if seller_id:
-        # Satıcının ürün ID'lerini bul
-        my_product_ids = [p.get("id") for p in all_products if p.get("seller_id") == seller_id]
-        # Satıcının siparişlerini filtrele
-        my_orders = [o for o in all_orders if o.get("product_id") in my_product_ids]
+    if response and response.get("success"):
+        orders_data = response.get("data", [])
         
-        if my_orders:
-            # Siparişleri tablo olarak göster
-            orders_data = []
-            for order in my_orders:
-                # Ürün adını bul
-                product = next((p for p in all_products if p.get("id") == order.get("product_id")), {})
-                orders_data.append({
-                    "Sipariş No": order.get('id'),
-                    "Ürün": product.get('name', f"ID: {order.get('product_id')}"),
-                    "Adet": order.get('quantity'),
-                    "Durum": order.get('status', 'pending'),
-                    "Müşteri ID": order.get('user_id'),
-                    "Tarih": order.get('created_at', '')[:10] if order.get('created_at') else ''
-                })
-            
-            df = pd.DataFrame(orders_data)
-            st.dataframe(df, use_container_width=True)
-            
-            # Sipariş detayları
-            st.subheader("📋 Sipariş Detayları")
-            for order in my_orders:
-                product = next((p for p in all_products if p.get("id") == order.get("product_id")), {})
-                with st.expander(f"Sipariş #{order.get('id')} - {order.get('status', 'Beklemede')}"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.write(f"**Ürün:** {product.get('name', 'Bilinmiyor')}")
-                        st.write(f"**Adet:** {order.get('quantity')}")
-                        st.write(f"**Müşteri ID:** {order.get('user_id')}")
-                    with col2:
-                        st.write(f"**Durum:** {order.get('status')}")
-                        st.write(f"**Toplam Tutar:** {order.get('total_amount', 0)} TL")
-                        st.write(f"**Sipariş Tarihi:** {order.get('created_at')}")
-                    
-                    # İptal butonu (opsiyonel)
-                    if order.get('status') in ['pending', 'confirmed']:
-                        if st.button(f"❌ İptal Et", key=f"cancel_{order.get('id')}"):
-                            cancel_res = api_request("PUT", f"/orders/{order.get('id')}/cancel")
-                            if cancel_res and cancel_res.get("success"):
-                                st.success("Sipariş iptal edildi!")
-                                st.rerun()
-                            else:
-                                st.error("İptal başarısız!")
+        if not orders_data:
+            st.info("📭 Henüz bir sipariş kaydı bulunmuyor.")
         else:
-            st.info("📭 Henüz siparişiniz bulunmuyor.")
+            # 1. Özet Tablo Görünümü
+            df = pd.DataFrame(orders_data)
+            
+            # Tabloda sadece önemli kolonları gösterelim
+            view_cols = ["id", "product_id", "quantity", "status", "created_at"]
+            # Var olan kolonları filtrele (hata almamak için)
+            existing_cols = [c for c in view_cols if c in df.columns]
+            
+            st.dataframe(df[existing_cols], use_container_width=True)
+            
+            st.markdown("---")
+            
+            # 2. Detaylı Kart Görünümü ve İşlemler
+            st.subheader("📋 Sipariş Detayları ve Yönetim")
+            for order in orders_data:
+                # Duruma göre renkli badge/etiket mantığı
+                status = order.get('status', 'pending')
+                status_emoji = "⏳" if status == "pending" else "✅" if status == "shipped" else "❌"
+                
+                with st.container(border=True):
+                    col1, col2, col3 = st.columns([2, 2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**Sipariş #{order.get('id')}**")
+                        st.caption(f"Tarih: {order.get('created_at', '')[:10]}")
+                    
+                    with col2:
+                        st.write(f"**Adet:** {order.get('quantity')}")
+                        st.write(f"**Durum:** {status_emoji} {status.upper()}")
+                        
+                    with col3:
+                        # Eğer kargo tabına yönlendirmek istersen veya işlem yapmak istersen
+                        if status == 'pending':
+                            if st.button("Kargola 🚚", key=f"ship_btn_{order.get('id')}"):
+                                # Kargo tabına yönlendirme veya modal açma mantığı
+                                st.session_state.shipment_order = order
+                                st.success("Kargo Yönetimi sekmesine giderek işlemi tamamlayabilirsiniz.")
     else:
-        st.warning("⚠️ Önce mağaza kaydı yapmalısınız!")
-
+        st.error("⚠️ Sipariş verileri alınamadı. Lütfen bağlantınızı kontrol edin.")
 # ==================== TAB 4: KARGO YÖNETİMİ ====================
 with tab4:
     st.subheader("🚚 Kargo Yönetimi")
@@ -394,7 +371,7 @@ with tab4:
                             st.session_state.shipment_order = order
                             st.rerun()
         else:
-            st.info("📭 Kargo bekleyen sipariş bulunmuyor.")
+            st.info("📭")
         
         # Kargo oluşturma formu
         if st.session_state.get("shipment_order"):
@@ -414,7 +391,7 @@ with tab4:
                         })
                         if res and res.get("success"):
                             # Sipariş durumunu güncelle
-                            api_request("PUT", f"/orders/{order.get('id')}/status", {"status": "shipped"})
+                            api_request("PUT", f"/orders/{id}/status", data={"status": "shipped"})
                             st.success("✅ Kargo oluşturuldu ve sipariş kargolandı!")
                             del st.session_state.shipment_order
                             st.rerun()
@@ -426,31 +403,7 @@ with tab4:
                         del st.session_state.shipment_order
                         st.rerun()
         
-        # Mevcut kargoları listele
-        st.markdown("---")
-        st.subheader("📋 Mevcut Kargolar")
-        
-        shipments_response = api_request("GET", "/shipments")
-        if shipments_response and shipments_response.get("success"):
-            shipments = shipments_response.get("data", [])
-            if shipments:
-                for shipment in shipments:
-                    # Bu kargonun satıcıya ait olup olmadığını kontrol et
-                    order = next((o for o in all_orders if o.get("id") == shipment.get("order_id")), {})
-                    if order.get("product_id") in my_product_ids:
-                        with st.expander(f"Kargo - {shipment.get('tracking_number', 'Takip No Yok')}"):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.write(f"**Sipariş ID:** {shipment.get('order_id')}")
-                                st.write(f"**Kargo Şirketi:** {shipment.get('cargo_company')}")
-                            with col2:
-                                st.write(f"**Durum:** {shipment.get('status', 'pending')}")
-                                st.write(f"**Takip No:** {shipment.get('tracking_number')}")
-            else:
-                st.info("Henüz kargo kaydı yok.")
-    else:
-        st.warning("⚠️ Önce mağaza kaydı yapmalısınız!")
-
+       
 # ==================== TAB 5: AI ASİSTAN ====================
 with tab5:
     st.subheader("🤖 AI Satıcı Asistanı")

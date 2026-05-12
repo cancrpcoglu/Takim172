@@ -8,6 +8,10 @@ from backend.app.models.seller import Seller
 from backend.app.services.order_service import OrderService
 from backend.app.core.security import get_current_user, require_role
 
+from fastapi.encoders import jsonable_encoder
+
+from fastapi.encoders import jsonable_encoder
+from sqlalchemy.orm import joinedload
 router = APIRouter(
     prefix="/orders",
     tags=["Orders"]
@@ -58,27 +62,43 @@ def get_orders(
     }
 
 
+
 @router.get("/my")
 def get_my_orders(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    current_user_id = user.id if hasattr(user, 'id') else user.get("id")
-    
-    # Eğer kullanıcı satıcıysa, ona gelen siparişleri getir
-    if user.role == "seller":
-        # 1. Önce bu kullanıcıya ait satıcı (seller) kaydını bul
-        seller = db.query(Seller).filter(Seller.user_id == current_user_id).first()
-        if not seller:
-            return {"success": True, "data": []}
-            
-        # 2. Satıcının ürünlerine ait olan siparişleri getir (Join işlemi)
-        orders = db.query(Order).join(Product).filter(Product.seller_id == seller.id).all()
+    # Kullanıcı bilgilerini al
+    if isinstance(user, dict):
+        current_user_id = user.get("user_id") or user.get("id")
+        role = user.get("role")
     else:
-        # Müşteriyse kendi verdiklerini getir
-        orders = db.query(Order).filter(Order.user_id == current_user_id).all()
+        current_user_id = user.id
+        role = user.role
     
-    return {"success": True, "data": orders}
+    if role == "seller":
+        # Satıcı profilini bul
+        seller = db.query(Seller).filter(Seller.user_id == current_user_id).first()
+        
+        if not seller:
+            return {"success": True, "data": [], "message": "Mağaza kaydı bulunamadı."}
+        
+        # Satıcının ürünlerine gelen siparişleri getir
+        orders = db.query(Order).join(Product, Order.product_id == Product.id).filter(
+            Product.seller_id == seller.id,
+            Order.is_deleted == False
+        ).all()
+    else:
+        # Müşterinin kendi siparişleri
+        orders = db.query(Order).filter(
+            Order.user_id == current_user_id,
+            Order.is_deleted == False
+        ).all()
+    
+    return {
+        "success": True, 
+        "data": jsonable_encoder(orders)
+    }
 @router.get("/{id}")
 def get_order(
     id: int,
@@ -128,7 +148,7 @@ def update_status(
     # Status'u Query yerine Body olarak almak Swagger'da daha temiz durur
     status: str = Body(...),
     db: Session = Depends(get_db),
-    user=Depends(require_role("admin"))
+    user=Depends(require_role("seller"))
 ):
     OrderService.update_status(db, id, status)
     return {

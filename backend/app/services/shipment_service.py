@@ -1,4 +1,6 @@
 from backend.app.models.order import Order
+from backend.app.models.product import Product
+from backend.app.models.seller import Seller
 from backend.app.models.shipment import Shipment
 
 
@@ -38,7 +40,26 @@ class ShipmentService:
 
         return shipment
 
+    @staticmethod
+    def get_shipments_by_seller(db, user_id: int):
+        from backend.app.models.shipment import Shipment
+        from backend.app.models.order import Order
+        from backend.app.models.product import Product
+        from backend.app.models.seller import Seller
 
+    # SQLAlchemy'ye tam yolu tarif ediyoruz: 
+    # Shipment -> Order (Shipment.order_id üzerinden)
+    # Order -> Product (Order.product_id üzerinden)
+    # Product -> Seller (Product.seller_id üzerinden)
+    
+        return db.query(Shipment).select_from(Shipment).\
+            join(Order, Shipment.order_id == Order.id).\
+            join(Product, Order.product_id == Product.id).\
+            join(Seller, Product.seller_id == Seller.id).\
+            filter(
+            Seller.user_id == user_id,
+             Shipment.is_deleted == False
+            ).all()
     @staticmethod
     def get_shipments(db):
         return db.query(Shipment).filter(Shipment.is_deleted == False).all()

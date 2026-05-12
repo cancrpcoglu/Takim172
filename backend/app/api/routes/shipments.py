@@ -40,15 +40,27 @@ def create_shipment(
         "data": shipment
     }
 
+from fastapi.encoders import jsonable_encoder
+
 @router.get("/")
 def get_shipments(
     db: Session = Depends(get_db),
-    user=Depends(require_role("admin"))
+    user=Depends(get_current_user)
 ):
-    shipments = ShipmentService.get_shipments(db)
+    role = user.role if hasattr(user, 'role') else user.get("role")
+    user_id = user.id if hasattr(user, 'id') else user.get("id")
+
+    if role == "admin":
+        shipments = ShipmentService.get_shipments(db)
+    elif role == "seller":
+        # Artık bu fonksiyon servis katmanında tanımlı!
+        shipments = ShipmentService.get_shipments_by_seller(db, user_id)
+    else:
+        raise HTTPException(status_code=403, detail="Yetkiniz yok.")
+
     return {
         "success": True,
-        "data": shipments
+        "data": jsonable_encoder(shipments) # Burası önemli
     }
 
 @router.get("/{id}")
