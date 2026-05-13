@@ -8,12 +8,26 @@ if st.session_state.get("role") != "user":
     st.warning("Bu sayfa sadece müşteriler içindir.")
     st.stop()
 
-# Sepet için session state初始化
+# Sepet için session state
 if "cart" not in st.session_state:
     st.session_state.cart = {}  # {product_id: {"product": product, "quantity": quantity}}
 
 # Sidebar - Sepet Özeti
 st.sidebar.title(f"👋 Hoş geldin, {st.session_state.get('username', 'Müşteri')}")
+st.sidebar.markdown("---")
+
+if st.sidebar.button("🔒 Güvenli Çıkış", use_container_width=True):
+
+# Session temizle
+ for key in list(st.session_state.keys()):
+    del st.session_state[key]
+
+ st.success("Güvenli çıkış yapıldı.")
+
+ time.sleep(1)
+
+# Login sayfasına yönlendir
+ st.switch_page("pages/login.py")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🛒 Sepetim")

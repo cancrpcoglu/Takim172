@@ -36,6 +36,20 @@ def get_seller_id():
 
 # Sidebar - Satıcı Bilgileri
 st.sidebar.title(f"🏪 Hoş geldin, {st.session_state.get('username', 'Satıcı')}")
+st.sidebar.markdown("---")
+
+if st.sidebar.button("🔒 Güvenli Çıkış", use_container_width=True):
+
+# Session temizle
+ for key in list(st.session_state.keys()):
+    del st.session_state[key]
+
+ st.success("Güvenli çıkış yapıldı.")
+
+ time.sleep(1)
+
+# Login sayfasına yönlendir
+ st.switch_page("pages/login.py")
 
 # Mağaza bilgisini kontrol et
 seller_info = api_request("GET", "/sellers/me")
