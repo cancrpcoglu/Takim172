@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from app.utils.logger import setup_logger
+from kobi_ai_system.app.utils.logger import setup_logger
 
 load_dotenv()
 logger = setup_logger("IngestionPipeline")
@@ -19,7 +19,7 @@ def create_and_save_index():
     ]
     
     try:
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")
         vector_store = FAISS.from_documents(kobi_bilgileri, embeddings)
         
         # Klasörü oluştur ve FAISS veritabanını diske kaydet

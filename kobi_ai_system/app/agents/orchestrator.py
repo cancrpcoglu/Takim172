@@ -8,10 +8,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 # Hafıza modülümüzü içeri aktarıyoruz
 from langgraph.checkpoint.memory import MemorySaver
 
-from app.tools.stock_tools import check_stock_and_price
-from app.tools.cargo_tools import track_cargo
-from app.tools.policy_tools import search_company_policies
-from app.schemas.responses import ChatResponse
+from kobi_ai_system.app.tools.stock_tools import check_stock_and_price
+from kobi_ai_system.app.tools.cargo_tools import track_cargo
+from kobi_ai_system.app.tools.policy_tools import search_company_policies
+from kobi_ai_system.app.schemas.responses import ChatResponse
 
 load_dotenv()
 
